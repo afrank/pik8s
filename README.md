@@ -13,7 +13,7 @@ If I were you I wouldn't attempt to run this on anything slower than a pi4. That
 
 ## Installation
 The easiest way to install this is to download the latest image and flash it onto an SD card.
-###Install Docker-CE
+### Install Docker-CE ###
 ```
 sudo su -
 curl -fsSL https://get.docker.com -o get-docker.sh
@@ -36,7 +36,7 @@ mkdir -p /etc/systemd/system/docker.service.d
 systemctl daemon-reload
 systemctl restart docker
 ```
-###Disable swap
+### Disable swap ###
 ```
 swapoff -a
 dphys-swapfile swapoff
