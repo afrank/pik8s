@@ -41,7 +41,7 @@ systemctl restart docker
 swapoff -a
 dphys-swapfile swapoff
 ```
-###Set up iptables
+### Set up iptables ###
 ```
 cat <<EOF > /etc/sysctl.d/k8s.conf
 net.bridge.bridge-nf-call-ip6tables = 1
@@ -58,7 +58,7 @@ sudo update-alternatives --set ip6tables /usr/sbin/ip6tables-legacy
 sudo update-alternatives --set arptables /usr/sbin/arptables-legacy
 sudo update-alternatives --set ebtables /usr/sbin/ebtables-legacy
 ```
-###Install k8s packages
+### Install k8s packages ###
 ```
 sudo apt-get update && sudo apt-get install -y apt-transport-https curl
 curl -s https://packages.cloud.google.com/apt/doc/apt-key.gpg | sudo apt-key add -
@@ -68,7 +68,7 @@ EOF
 sudo apt-get update
 sudo apt-get install -y kubelet kubeadm kubectl
 ```
-###Bootstrap the cluster
+### Bootstrap the cluster ###
 ```
 kubeadm init --pod-network-cidr=10.244.0.0/16
 
@@ -87,6 +87,6 @@ kubectl taint nodes --all node-role.kubernetes.io/master-
 kubectl apply -f https://raw.githubusercontent.com/coreos/flannel/2140ac876ef134e0ed5af15c65e414cf26827915/Documentation/kube-flannel.yml
 ```
 
-###Next steps
+### Next steps ###
 * Setup Helm
 * Set up ingress
