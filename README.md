@@ -12,7 +12,7 @@ Don't waste your time retrofitting your mac to run a local kubernetes cluster. J
 If I were you I wouldn't attempt to run this on anything slower than a pi4. That said, it _should_ work on anything Raspbian will work on.
 
 ## Installation
-Grab the [https://downloads.raspberrypi.org/raspbian_lite_latest](latest Rasbian Lite image), unzip it, and flash it onto an SD card. 
+Grab the [latest Raspbian Lite Image](https://downloads.raspberrypi.org/raspbian_lite_latest), unzip it, and flash it onto an SD card. 
 
 Once you boot from that, log in as username *pi* password *raspberry*, and run `sudo su -`.
 
