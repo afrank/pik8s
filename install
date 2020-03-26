@@ -1,0 +1,84 @@
+#!/bin/bash
+
+set -e
+
+systemctl enable ssh
+systemctl restart ssh
+
+apt-get update
+apt-get install -y iptables arptables ebtables apt-transport-https curl jq
+
+curl -fsSL https://get.docker.com -o get-docker.sh
+sh get-docker.sh
+rm -f get-docker.sh
+usermod -aG docker pi
+cat > /etc/docker/daemon.json <<EOF
+{
+  "exec-opts": ["native.cgroupdriver=systemd"],
+  "log-driver": "json-file",
+  "log-opts": {
+    "max-size": "100m"
+  },
+  "storage-driver": "overlay2"
+}
+EOF
+
+mkdir -p /etc/systemd/system/docker.service.d
+
+# Restart docker.
+systemctl daemon-reload
+systemctl restart docker
+
+### Disable swap ###
+swapoff -a
+dphys-swapfile swapoff
+
+### Set up iptables ###
+cat <<EOF > /etc/sysctl.d/k8s.conf
+net.bridge.bridge-nf-call-ip6tables = 1
+net.bridge.bridge-nf-call-iptables = 1
+EOF
+sysctl --system
+
+# switch to legacy versions
+update-alternatives --set iptables /usr/sbin/iptables-legacy
+update-alternatives --set ip6tables /usr/sbin/ip6tables-legacy
+update-alternatives --set arptables /usr/sbin/arptables-legacy
+update-alternatives --set ebtables /usr/sbin/ebtables-legacy
+
+### Install k8s packages ###
+curl -s https://packages.cloud.google.com/apt/doc/apt-key.gpg | apt-key add -
+cat <<EOF | tee /etc/apt/sources.list.d/kubernetes.list
+deb https://apt.kubernetes.io/ kubernetes-xenial main
+EOF
+apt-get update
+apt-get install -y kubelet kubeadm kubectl
+
+### Bootstrap the cluster ###
+kubeadm init --pod-network-cidr=10.244.0.0/16
+
+
+mkdir -p /root/.kube
+mkdir -p /home/pi/.kube
+cp -i /etc/kubernetes/admin.conf /root/.kube/config
+cp -i /etc/kubernetes/admin.conf /home/pi/.kube/config
+chown -R root. /root/.kube/config
+chown -R pi. /home/pi/.kube
+
+# untaint the master
+kubectl taint nodes --all node-role.kubernetes.io/master-
+
+# Set up flannel
+kubectl apply -f https://raw.githubusercontent.com/coreos/flannel/2140ac876ef134e0ed5af15c65e414cf26827915/Documentation/kube-flannel.yml
+
+### Install Helm ###
+curl -L https://raw.githubusercontent.com/helm/helm/master/scripts/get-helm-3 | bash
+helm repo add stable https://kubernetes-charts.storage.googleapis.com/
+helm repo update
+
+### kubernetes dashboard ###
+helm install kubernetes-dashboard stable/kubernetes-dashboard --set image.repository=k8s.gcr.io/kubernetes-dashboard-arm --set rbac.create=true --set rbac.clusterAdminRole=true
+ip_address=$(ifconfig eth0 | grep 'inet ' | awk '{print $2}')
+kubectl patch svc kubernetes-dashboard -p "{\"spec\":{\"externalIPs\":[\"${ip_address}\"]}}"
+token=$(kubectl get secrets $(kubectl get secrets | grep kubernetes-dashboard-token | awk '{print $1}') -ojson | jq -r .data.token | base64 -d)
+

@@ -12,81 +12,13 @@ Don't waste your time retrofitting your mac to run a local kubernetes cluster. J
 If I were you I wouldn't attempt to run this on anything slower than a pi4. That said, it _should_ work on anything Raspbian will work on.
 
 ## Installation
-The easiest way to install this is to download the latest image and flash it onto an SD card.
-### Install Docker-CE ###
-```
-sudo su -
-curl -fsSL https://get.docker.com -o get-docker.sh
-sh get-docker.sh
-usermod -aG docker pi
-cat > /etc/docker/daemon.json <<EOF
-{
-  "exec-opts": ["native.cgroupdriver=systemd"],
-  "log-driver": "json-file",
-  "log-opts": {
-    "max-size": "100m"
-  },
-  "storage-driver": "overlay2"
-}
-EOF
+Grab the [https://downloads.raspberrypi.org/raspbian_lite_latest](latest Rasbian Lite image), unzip it, and flash it onto an SD card. 
 
-mkdir -p /etc/systemd/system/docker.service.d
+Once you boot from that, log in as username *pi* password *raspberry*, and run `sudo su -`.
 
-# Restart docker.
-systemctl daemon-reload
-systemctl restart docker
+After you've run sudo su to gain root privileges, run
 ```
-### Disable swap ###
+curl -s https://rpik8s.com/install > install
+chmod +x install
+./install
 ```
-swapoff -a
-dphys-swapfile swapoff
-```
-### Set up iptables ###
-```
-cat <<EOF > /etc/sysctl.d/k8s.conf
-net.bridge.bridge-nf-call-ip6tables = 1
-net.bridge.bridge-nf-call-iptables = 1
-EOF
-sysctl --system
-
-# ensure legacy binaries are installed
-sudo apt-get install -y iptables arptables ebtables
-
-# switch to legacy versions
-sudo update-alternatives --set iptables /usr/sbin/iptables-legacy
-sudo update-alternatives --set ip6tables /usr/sbin/ip6tables-legacy
-sudo update-alternatives --set arptables /usr/sbin/arptables-legacy
-sudo update-alternatives --set ebtables /usr/sbin/ebtables-legacy
-```
-### Install k8s packages ###
-```
-sudo apt-get update && sudo apt-get install -y apt-transport-https curl
-curl -s https://packages.cloud.google.com/apt/doc/apt-key.gpg | sudo apt-key add -
-cat <<EOF | sudo tee /etc/apt/sources.list.d/kubernetes.list
-deb https://apt.kubernetes.io/ kubernetes-xenial main
-EOF
-sudo apt-get update
-sudo apt-get install -y kubelet kubeadm kubectl
-```
-### Bootstrap the cluster ###
-```
-kubeadm init --pod-network-cidr=10.244.0.0/16
-
-mkdir -p $HOME/.kube
-sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
-sudo chown $(id -u):$(id -g) $HOME/.kube/config
-
-mkdir /home/pi/.kube
-cp -i /etc/kubernetes/admin.conf /home/pi/.kube/config
-chown -R pi. /home/pi/.kube
-
-# untaint the master
-kubectl taint nodes --all node-role.kubernetes.io/master-
-
-# Set up flannel
-kubectl apply -f https://raw.githubusercontent.com/coreos/flannel/2140ac876ef134e0ed5af15c65e414cf26827915/Documentation/kube-flannel.yml
-```
-
-### Next steps ###
-* Setup Helm
-* Set up ingress
